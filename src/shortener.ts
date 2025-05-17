@@ -98,7 +98,7 @@ app.post(
       await c.env.SHORT_URLS.put(slug, url);
 
       // Return full short URL
-      const shortUrl = `${c.env.BASE_URL}/${slug}`;
+      const shortUrl = `https://${c.env.BASE_URL}/${slug}`;
       console.log(`[INFO] POST /api/urls - short URL created: ${shortUrl}`);
       return c.json(
         createApiResponse(true, { url, shortUrl, slug }),
