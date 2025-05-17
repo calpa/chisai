@@ -6,9 +6,21 @@
     "strict": true,
     "skipLibCheck": true,
     "lib": [
-      "ESNext"
+      "ESNext",
+      "WebWorker"
     ],
     "jsx": "react-jsx",
-    "jsxImportSource": "hono/jsx"
+    "jsxImportSource": "hono/jsx",
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "types": [
+      "@cloudflare/vitest-pool-workers",
+      "vitest"
+    ]
   },
+  "include": [
+    "src",
+    "src/**/*.test.ts",
+    "worker-configuration.d.ts"
+  ]
 }
