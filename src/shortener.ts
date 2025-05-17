@@ -48,6 +48,7 @@ app.use(
 
 // Home page
 app.get('/', (c) => {
+  console.log('[INFO] GET / - healthcheck');
   return c.text('Short URL Service API is running!');
 });
 
@@ -55,13 +56,12 @@ app.get('/', (c) => {
 app.post(
   '/api/urls',
   async (c, next) => {
-    // Apply auth middleware
+    console.log('[INFO] POST /api/urls - checking authentication');
     const authResponse = await requireAuth(c, next);
     if (authResponse) {
-      // If auth middleware returned a response, return it
+      console.log('[WARN] POST /api/urls - authentication failed or not provided');
       return authResponse;
     }
-    // Otherwise, continue to the next middleware
     return next();
   },
   zValidator('json', createShortUrlSchema, (result, c) => {
@@ -70,6 +70,7 @@ app.post(
         ...acc,
         [issue.path[0]]: issue.message,
       }), {});
+      console.warn('[WARN] POST /api/urls - validation failed', errors);
       return c.json(
         createApiResponse(false, undefined, 'Validation failed', errors),
         400
@@ -79,22 +80,26 @@ app.post(
   async (c) => {
     const { url, slug: customSlug } = c.req.valid('json') as CreateShortUrlInput;
     const slug = customSlug || generateRandomSlug();
-    
+
+    console.log(`[INFO] POST /api/urls - received URL: ${url}, requested slug: ${customSlug || '[auto-generated]'}`);
+
     try {
       // Check if slug already exists
       const existingUrl = await c.env.SHORT_URLS.get(slug);
       if (existingUrl) {
+        console.warn(`[WARN] POST /api/urls - slug already in use: ${slug}`);
         return c.json(
           createApiResponse(false, undefined, 'This short URL is already in use'),
           400
         );
       }
-      
+
       // Save short URL
       await c.env.SHORT_URLS.put(slug, url);
-      
+
       // Return full short URL
       const shortUrl = `${c.env.BASE_URL}/${slug}`;
+      console.log(`[INFO] POST /api/urls - short URL created: ${shortUrl}`);
       return c.json(
         createApiResponse(true, { url, shortUrl, slug }),
         201
@@ -112,19 +117,23 @@ app.post(
 // Redirect short URL
 app.get('/:slug', async (c) => {
   const { slug } = c.req.param();
-  
+  console.log(`[INFO] GET /${slug} - redirect attempt`);
+
   try {
     // Validate slug format
     const validation = getUrlBySlugSchema.safeParse({ slug });
     if (!validation.success) {
+      console.warn(`[WARN] GET /${slug} - invalid slug format`);
       return c.notFound();
     }
-    
+
     const url = await c.env.SHORT_URLS.get(slug);
     if (!url) {
+      console.warn(`[WARN] GET /${slug} - slug not found`);
       return c.notFound();
     }
-    
+
+    console.log(`[INFO] GET /${slug} - redirecting to ${url}`);
     return c.redirect(url);
   } catch (error) {
     console.error('Error redirecting:', error);
@@ -135,26 +144,30 @@ app.get('/:slug', async (c) => {
 // Get short URL details
 app.get('/api/urls/:slug', async (c) => {
   const { slug } = c.req.param();
-  
+  console.log(`[INFO] GET /api/urls/${slug} - fetch short URL details`);
+
   try {
     // Validate slug format
     const validation = getUrlBySlugSchema.safeParse({ slug });
     if (!validation.success) {
+      console.warn(`[WARN] GET /api/urls/${slug} - invalid slug`);
       return c.json(
         createApiResponse(false, undefined, 'Invalid short URL code'),
         400
       );
     }
-    
+
     const url = await c.env.SHORT_URLS.get(slug);
     if (!url) {
+      console.warn(`[WARN] GET /api/urls/${slug} - not found`);
       return c.json(
         createApiResponse(false, undefined, 'Specified short URL not found'),
         404
       );
     }
-    
+
     const shortUrl = `${c.env.BASE_URL}/${slug}`;
+    console.log(`[INFO] GET /api/urls/${slug} - found: ${shortUrl}`);
     return c.json(
       createApiResponse(true, { url, shortUrl, slug })
     );

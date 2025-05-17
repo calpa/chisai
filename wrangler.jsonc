@@ -6,9 +6,6 @@
   "compatibility_flags": [
     "nodejs_compat"
   ],
-  "vars": {
-    "BASE_URL": "http://localhost:8787"
-  },
   "kv_namespaces": [
     {
       "binding": "SHORT_URLS",

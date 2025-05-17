@@ -7,13 +7,13 @@ type CloudflareBindings = {
 export const requireAuth = async (c: Context, next: () => Promise<void>) => {
   // Skip auth check if we're in a test environment
   if (c.env.ENVIRONMENT === 'test') {
-    return next();
+    return;
   }
 
   // Skip auth check if no API_TOKEN is set (for development)
   if (!c.env.API_TOKEN) {
     console.warn('API_TOKEN is not set. Authentication is disabled.');
-    return next();
+    return;
   }
 
   const authHeader = c.req.header('Authorization');
@@ -39,6 +39,5 @@ export const requireAuth = async (c: Context, next: () => Promise<void>) => {
       401
     );
   }
-
-  await next();
+  return;
 };
