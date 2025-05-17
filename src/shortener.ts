@@ -1,11 +1,10 @@
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
+import { requireAuth } from './middleware/auth';
 import { 
   createShortUrlSchema, 
   getUrlBySlugSchema,
-  apiResponseSchema,
   type CreateShortUrlInput,
-  type GetUrlBySlugInput,
   type ApiResponse
 } from './types/validations';
 
@@ -38,9 +37,19 @@ app.get('/', (c) => {
   return c.text('Short URL Service API is running!');
 });
 
-// Create short URL
+// Create short URL (requires authentication)
 app.post(
   '/api/urls',
+  async (c, next) => {
+    // Apply auth middleware
+    const authResponse = await requireAuth(c, next);
+    if (authResponse) {
+      // If auth middleware returned a response, return it
+      return authResponse;
+    }
+    // Otherwise, continue to the next middleware
+    return next();
+  },
   zValidator('json', createShortUrlSchema, (result, c) => {
     if (!result.success) {
       const errors = result.error.issues.reduce((acc, issue) => ({

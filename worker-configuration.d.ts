@@ -5,6 +5,7 @@ declare namespace Cloudflare {
 	interface Env {
 		SHORT_URLS: KVNamespace;
 		BASE_URL: "http://localhost:8787";
+		API_TOKEN?: string; // Optional for development, should be required in production
 	}
 }
 interface CloudflareBindings extends Cloudflare.Env {}

@@ -20,6 +20,9 @@ type ErrorResponse = {
 
 type TestResponse<T> = SuccessResponse<T> | ErrorResponse;
 
+// Test configuration
+const TEST_API_TOKEN = 'test-token-123';
+
 // Type declarations
 declare global {
   // eslint-disable-next-line no-var
@@ -43,8 +46,18 @@ describe('Short URL Service', () => {
   const testSlug = 'test123';
 
   beforeAll(() => {
-    // Set global BASE_URL
-    globalThis.BASE_URL = 'http://localhost:8787';
+    // Set up mock environment
+    Object.assign(globalThis, {
+      ENVIRONMENT: 'test',
+      SHORT_URLS: {
+        get: async (key: string) => (key === testSlug ? testUrl : null),
+        put: async (key: string, value: string) => {},
+        list: async () => ({ keys: [] }),
+        delete: async (key: string) => {},
+      },
+      BASE_URL: 'http://localhost:8787',
+      API_TOKEN: TEST_API_TOKEN,
+    });
   });
 
   afterEach(async () => {
@@ -66,10 +79,42 @@ describe('Short URL Service', () => {
   });
 
   describe('POST /api/urls', () => {
-    it('should create a new short URL', async () => {
+    it('should allow requests in test environment without token', async () => {
       const response = await SELF.fetch('http://localhost:8787/api/urls', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: testUrl }),
+      });
+
+      expect(response.status).toBe(201);
+      const result = await response.json<SuccessResponse<ShortUrlResponse>>();
+      expect(result.success).toBe(true);
+      expect(result.data).toHaveProperty('shortUrl');
+    });
+
+    it('should allow requests in test environment with any token', async () => {
+      const response = await SELF.fetch('http://localhost:8787/api/urls', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer any-token-works-in-test'
+        },
+        body: JSON.stringify({ url: testUrl }),
+      });
+
+      expect(response.status).toBe(201);
+      const result = await response.json<SuccessResponse<ShortUrlResponse>>();
+      expect(result.success).toBe(true);
+      expect(result.data).toHaveProperty('shortUrl');
+    });
+
+    it('should create a new short URL', async () => {
+      const response = await SELF.fetch('http://localhost:8787/api/urls', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${TEST_API_TOKEN}`
+        },
         body: JSON.stringify({ url: testUrl }),
       });
 
@@ -93,7 +138,10 @@ describe('Short URL Service', () => {
     it('should return validation error for invalid URL', async () => {
       const response = await SELF.fetch('http://localhost:8787/api/urls', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${TEST_API_TOKEN}`
+        },
         body: JSON.stringify({ url: 'invalid-url' }),
       });
 
@@ -111,7 +159,10 @@ describe('Short URL Service', () => {
     it('should return error for invalid slug format', async () => {
       const response = await SELF.fetch('http://localhost:8787/api/urls', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${TEST_API_TOKEN}`
+        },
         body: JSON.stringify({ 
           url: testUrl,
           slug: 'invalid slug!' // Contains space and special character
@@ -132,7 +183,10 @@ describe('Short URL Service', () => {
     it('should create a short URL with custom slug', async () => {
       const response = await SELF.fetch('http://localhost:8787/api/urls', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${TEST_API_TOKEN}`
+        },
         body: JSON.stringify({ 
           url: testUrl,
           slug: testSlug 
@@ -151,22 +205,28 @@ describe('Short URL Service', () => {
     });
     
     it('should return error for duplicate slug', async () => {
-      // First create a URL with the test slug
+      // First request to create a short URL
       await SELF.fetch('http://localhost:8787/api/urls', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${TEST_API_TOKEN}`
+        },
         body: JSON.stringify({ 
           url: testUrl,
           slug: testSlug 
         }),
       });
-      
-      // Try to create another URL with the same slug
+
+      // Second request with the same slug
       const response = await SELF.fetch('http://localhost:8787/api/urls', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${TEST_API_TOKEN}`
+        },
         body: JSON.stringify({ 
-          url: 'https://another-example.com',
+          url: testUrl,
           slug: testSlug 
         }),
       });
