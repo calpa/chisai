@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { cors } from 'hono/cors';
 import { zValidator } from '@hono/zod-validator';
 import { requireAuth } from './middleware/auth';
 import { 
@@ -31,6 +32,19 @@ const createApiResponse = (
 });
 
 export const app = new Hono<{ Bindings: CloudflareBindings }>();
+
+// Enable CORS for all routes
+app.use(
+  '/*',
+  cors({
+    origin: '*', // Allow all origins in development
+    allowMethods: ['GET', 'POST', 'OPTIONS'],
+    allowHeaders: ['Content-Type', 'Authorization'],
+    exposeHeaders: ['Content-Length'],
+    maxAge: 600,
+    credentials: false,
+  })
+);
 
 // Home page
 app.get('/', (c) => {
